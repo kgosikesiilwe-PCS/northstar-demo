@@ -9,19 +9,4 @@ services:
         sync: false
       - key: NORTHSTAR_FERNET_KEY
         sync: false
-      - key: DATABASE_URL
-        sync: false
     healthCheckPath: /ping
-
-  - type: cron
-    name: northstar-keepalive
-    runtime: python
-    schedule: "*/10 * * * *"
-    buildCommand: pip install requests
-    startCommand: python -c "import requests; requests.get('https://northstar-demo.onrender.com/ping', timeout=10)"
-
-databases:
-  - name: northstar-db
-    plan: free
-    databaseName: northstar
-    user: northstar

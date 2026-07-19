@@ -5,4 +5,3 @@ python-multipart>=0.0.20,<0.1
 cryptography>=44,<45
 itsdangerous>=2.2,<3
 mangum>=0.17,<1
-psycopg2-binary>=2.9,<3
