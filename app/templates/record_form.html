@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}{% if mode == 'edit' %}Edit{% else %}Add{% endif %} {{ cfg.singular }}{% endblock %}
+{% block content %}
+<div class="form-card">
+  <h1 style="margin-bottom:1.1rem;">{% if mode == 'edit' %}Edit{% else %}Add{% endif %} {{ cfg.singular }}</h1>
+  {% if cfg.warning %}<p class="warning-box">{{ cfg.warning }}</p>{% endif %}
+  <form method="post">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <div class="two-col">
+      {% for fd in cfg.fields %}
+      <label class="{% if fd.type == 'textarea' %}span-2{% endif %}">
+        {{ fd.label }}{% if fd.required %} <span class="required">*</span>{% endif %}
+        {% if fd.type == 'textarea' %}
+          <textarea name="{{ fd.name }}" {% if fd.required %}required{% endif %}>{{ record.get(fd.name,'') }}</textarea>
+        {% elif fd.type == 'select' %}
+          <select name="{{ fd.name }}" {% if fd.required %}required{% endif %}>
+            <option value="">Choose…</option>
+            {% for opt in fd.options %}
+              <option value="{{ opt }}" {% if record.get(fd.name,'') == opt %}selected{% endif %}>{{ opt }}</option>
+            {% endfor %}
+          </select>
+        {% elif fd.type == 'checkbox' %}
+          <span class="check-row">
+            <input type="checkbox" name="{{ fd.name }}" value="1" {% if record.get(fd.name) in [1,'1','on',True] %}checked{% endif %}> Yes
+          </span>
+        {% else %}
+          <input name="{{ fd.name }}" type="{{ fd.type }}" value="{{ record.get(fd.name,'') }}" {% if fd.required %}required{% endif %}>
+        {% endif %}
+        {% if fd.help %}<span class="help">{{ fd.help }}</span>{% endif %}
+      </label>
+      {% endfor %}
+    </div>
+    <div class="actions">
+      <button class="button primary" type="submit">Save</button>
+      <a class="button" href="/records/{{ cfg.key }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

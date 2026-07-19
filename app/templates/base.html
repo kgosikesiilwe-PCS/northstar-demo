@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}NorthStar{% endblock %}</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand-wrap" href="{% if user %}/dashboard{% else %}/{% endif %}">
+    <svg width="32" height="32" viewBox="0 0 34 34" fill="none">
+      <polygon points="3,27 3,7 8,7 17,19 17,7 22,7 22,27 17,27 8,15 8,27" fill="#fff"/>
+      <path d="M25 3L26.1 7.9L31 9L26.1 10.1L25 15L23.9 10.1L19 9L23.9 7.9Z" fill="#A4814D"/>
+    </svg>
+    <span class="brand-name">NorthStar</span>
+  </a>
+  {% if user %}
+  <nav class="nav">
+    <a href="/dashboard">Home</a>
+    <a href="/emergency-card">Emergency</a>
+    <a href="/medicare-review">Medicare</a>
+    <a href="/records/medications">Health</a>
+    <a href="/documents">Documents</a>
+    {% if is_owner %}<a href="/family-access">Family Access</a>{% endif %}
+  </nav>
+  <form method="post" action="/logout" class="logout-form">
+    <button class="link-button" type="submit">Sign out</button>
+  </form>
+  {% endif %}
+</header>
+
+<main class="container">
+  {% for flash in flashes %}
+    <div class="flash {{ flash.level }}">{{ flash.message }}</div>
+  {% endfor %}
+  {% if profile %}
+  <div class="profile-strip">
+    <span>Profile: <strong>{{ profile.full_name }}</strong></span>
+    {% if not is_owner and grant %}
+      <span class="pill">Shared — {{ grant.relationship }}</span>
+    {% endif %}
+  </div>
+  {% endif %}
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="footer">
+  <p>NorthStar stores sensitive Medicare, health, and family information. Do not enter passwords, PINs, Social Security numbers, or full financial account numbers. NorthStar is not affiliated with or endorsed by Medicare, CMS, or the federal government.</p>
+</footer>
+</body>
+</html>

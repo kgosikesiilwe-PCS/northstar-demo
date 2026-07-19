@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Family Access{% endblock %}
+{% block content %}
+{% include "_icons.html" %}
+<div class="page-head">
+  <div>
+    <h1>Family Access Authorization</h1>
+    <p class="muted">Choose exactly who can see which sections. Access can be revoked at any time.</p>
+    <p class="warning-box" style="margin-top:.6rem;">Do not grant access to agents or third parties. This version is for chosen family, spouse, relatives, or trusted caregivers only.</p>
+  </div>
+</div>
+
+<div class="form-card">
+  <h2 style="margin-bottom:.85rem;">Invite a trusted person</h2>
+  <form method="post" action="/family-access/invite">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <div class="two-col">
+      <label>Name <input name="name" required></label>
+      <label>Relationship <input name="relationship" placeholder="Daughter, spouse, sibling" required></label>
+      <label>Email <input name="email" type="email" required></label>
+      <label>Phone <input name="phone"></label>
+      <label>Permission level
+        <select name="access_level">
+          <option value="viewer">View only</option>
+          <option value="editor">View and edit selected sections</option>
+          <option value="manager">View, edit, and upload selected sections</option>
+        </select>
+      </label>
+      <label>Expiration date <input name="expires_at" type="date"></label>
+      <label class="span-2 check-row"><input type="checkbox" name="can_download" value="1"> Allow document downloads</label>
+    </div>
+    <fieldset>
+      <legend>Sections this person may access</legend>
+      <div class="checkbox-grid">
+        {% for value, label in access_sections %}
+        <label class="check-row"><input type="checkbox" name="section_{{ value }}" value="1"> {{ label }}</label>
+        {% endfor %}
+      </div>
+    </fieldset>
+    <div class="authorization-text">
+      <p>I authorize the person named above to access the selected sections of my NorthStar profile. I understand this may include health, Medicare, insurance, medication, doctor, emergency, legal, and personal planning information depending on the sections I choose. I understand I can revoke this access at any time.</p>
+    </div>
+    <label>Type your name to sign <input name="electronic_signature" value="{{ profile.full_name }}" required></label>
+    <div class="actions"><button class="button primary" type="submit">Create family access invite</button></div>
+  </form>
+</div>
+
+<h2 style="margin:.5rem 0 .75rem;font-size:1.05rem;">Current trusted people</h2>
+{% if people %}
+<div class="contact-grid">
+  {% for person in people %}
+  <div class="contact-card">
+    <div class="contact-avatar">{{ person.name[0]|upper }}</div>
+    <div style="flex:1;">
+      <div class="contact-name">{{ person.name }}</div>
+      <div class="contact-relation">{{ person.relationship }} · {{ person.invite_status }}</div>
+      {% if person.email %}<div class="contact-detail"><svg width="12" height="12" style="color:var(--muted);"><use href="#ic-mail"/></svg>{{ person.email }}</div>{% endif %}
+      <div style="margin-top:.35rem;display:flex;flex-wrap:wrap;gap:.25rem;">
+        {% for s in person.allowed_sections_list %}<span class="pill">{{ s.replace('_',' ') }}</span>{% endfor %}
+      </div>
+      {% if person.grant_id %}
+      <div style="margin-top:.65rem;">
+        <form method="post" action="/family-access/{{ person.grant_id }}/revoke" onsubmit="return confirm('Revoke this access?')">
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          <button class="link-danger" type="submit">Revoke access</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty"><p>No trusted people added yet.</p></div>
+{% endif %}
+<p style="margin-top:.9rem;font-size:.88rem;"><a href="/audit">View audit log</a></p>
+{% endblock %}

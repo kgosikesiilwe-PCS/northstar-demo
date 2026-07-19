@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Emergency Card{% endblock %}
+{% block content %}
+{% include "_icons.html" %}
+<div class="page-head print-hide">
+  <div><h1>Emergency Card</h1><p class="muted">Print this or save as PDF for family use.</p></div>
+  <button class="button gold" onclick="window.print()">Print / Save PDF</button>
+</div>
+<div class="sheet">
+  <h1>{{ profile.full_name }}</h1>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem 1rem;margin:.75rem 0 1rem;font-size:.88rem;">
+    <div><strong>Date of birth:</strong> {{ profile.date_of_birth or 'Not provided' }}</div>
+    <div><strong>Phone:</strong> {{ profile.phone or 'Not provided' }}</div>
+    <div><strong>Reviewed:</strong> {{ profile.last_reviewed_at or 'Not reviewed' }}</div>
+    <div style="grid-column:1/-1;"><strong>Address:</strong> {{ profile.address_line_1 or '' }}{% if profile.address_line_2 %} {{ profile.address_line_2 }}{% endif %}{% if profile.city %} {{ profile.city }},{% endif %}{% if profile.state %} {{ profile.state }}{% endif %}{% if profile.zip %} {{ profile.zip }}{% endif %}</div>
+  </div>
+
+  {% if contacts %}
+  <div class="packet-section">
+    <div class="packet-section-header"><svg width="15" height="15"><use href="#ic-phone"/></svg><span class="packet-section-title">Emergency Contacts</span></div>
+    <div class="contact-grid" style="margin-top:.6rem;">
+      {% for c in contacts %}
+      <div class="contact-card">
+        <div class="contact-avatar">{{ c.name[0]|upper }}</div>
+        <div style="flex:1;">
+          <div class="contact-name">{{ c.name }}</div>
+          <div class="contact-relation">{{ c.relationship }} · Priority {{ c.priority_order }}</div>
+          {% if c.phone %}<div class="contact-detail"><svg width="12" height="12" style="color:var(--muted);"><use href="#ic-phone"/></svg>{{ c.phone }}</div>{% endif %}
+          {% if c.email %}<div class="contact-detail"><svg width="12" height="12" style="color:var(--muted);"><use href="#ic-mail"/></svg>{{ c.email }}</div>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if allergies %}
+  <div class="packet-section">
+    <div class="packet-section-header"><svg width="15" height="15"><use href="#ic-alert"/></svg><span class="packet-section-title">Allergies</span></div>
+    <div class="allergy-tags" style="margin-top:.6rem;">
+      {% for a in allergies %}
+      <span class="allergy-tag">{{ a.allergy_name }}{% if a.reaction %} — {{ a.reaction }}{% endif %} {% if a.severity == 'Severe' %}<span class="severity">SEVERE</span>{% endif %}</span>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if meds %}
+  <div class="packet-section">
+    <div class="packet-section-header"><svg width="15" height="15"><use href="#ic-heart"/></svg><span class="packet-section-title">Medications</span></div>
+    <div class="packet-row" style="margin-top:.6rem;">
+      {% for m in meds %}
+      <div class="packet-card">
+        <div class="packet-card-name">{{ m.medication_name }}</div>
+        <div class="packet-card-detail"><span class="packet-card-detail-label">Dosage</span>{{ m.dosage }}{% if m.frequency %} · {{ m.frequency }}{% endif %}</div>
+        {% if m.pharmacy_name %}<div class="packet-card-detail"><span class="packet-card-detail-label">Pharmacy</span>{{ m.pharmacy_name }}{% if m.pharmacy_phone %} — {{ m.pharmacy_phone }}{% endif %}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if providers %}
+  <div class="packet-section">
+    <div class="packet-section-header"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><use href="#ic-stethoscope"/></svg><span class="packet-section-title">Doctors &amp; Providers</span></div>
+    <div class="packet-row" style="margin-top:.6rem;">
+      {% for p in providers %}
+      <div class="packet-card {% if p.is_pcp in [1,'1'] or p.provider_type == 'Primary care doctor / PCP' %}{% set _ = '' %}{% endif %}" style="{% if p.is_pcp in [1,'1'] or p.provider_type == 'Primary care doctor / PCP' %}border-top:2px solid var(--gold);{% endif %}">
+        <div class="packet-card-name">{{ p.name }} {% if p.is_pcp in [1,'1'] or p.provider_type == 'Primary care doctor / PCP' %}<span style="font-size:.7rem;color:var(--gold);font-weight:700;">★ PCP</span>{% endif %}</div>
+        <div class="packet-card-detail"><span class="packet-card-detail-label">Type</span>{{ p.provider_type }}</div>
+        {% if p.phone %}<div class="packet-card-detail"><span class="packet-card-detail-label">Phone</span>{{ p.phone }}</div>{% endif %}
+        {% if p.doctor_network %}<div class="packet-card-detail"><span class="packet-card-detail-label">Network</span>{{ p.doctor_network }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if insurance %}
+  <div class="packet-section">
+    <div class="packet-section-header"><svg width="15" height="15"><use href="#ic-shield"/></svg><span class="packet-section-title">Insurance</span></div>
+    <div class="packet-row" style="margin-top:.6rem;">
+      {% for i in insurance %}
+      <div class="packet-card">
+        <div class="packet-card-name">{{ i.plan_name or i.insurance_company }}</div>
+        <div class="packet-card-detail"><span class="packet-card-detail-label">Type</span>{{ i.policy_type }}</div>
+        {% if i.member_id %}<div class="packet-card-detail"><span class="packet-card-detail-label">Member ID</span>{{ i.member_id }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if notes %}
+  <div class="packet-section">
+    <div class="packet-section-header"><svg width="15" height="15"><use href="#ic-note"/></svg><span class="packet-section-title">Important Notes</span></div>
+    {% for n in notes %}<p style="font-size:.88rem;margin:.3rem 0;"><strong>{{ n.category }}:</strong> {{ n.note_text }}</p>{% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

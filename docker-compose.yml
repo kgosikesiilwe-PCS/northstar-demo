@@ -1,0 +1,7 @@
+services:
+  northstar:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./instance:/app/instance

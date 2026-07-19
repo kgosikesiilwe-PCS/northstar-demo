@@ -1,0 +1,25 @@
+NorthStar MVP - easiest preview instructions
+
+MAC:
+1. Unzip the folder.
+2. Open the northstar_mvp folder.
+3. Double-click start_mac.command.
+4. Your browser should open automatically.
+5. Leave the Terminal window open while testing.
+
+WINDOWS:
+1. Unzip the folder.
+2. Open the northstar_mvp folder.
+3. Double-click start_windows.bat.
+4. Your browser should open automatically.
+5. Leave the Command Prompt window open while testing.
+
+DOCKER OPTION:
+If you have Docker Desktop installed:
+1. Open a terminal in the northstar_mvp folder.
+2. Run: docker compose up --build
+3. Open: http://127.0.0.1:8000
+
+COMMON ISSUE:
+http://127.0.0.1:8000 only works while the app server is running.
+If you close the terminal/command window, the browser address stops working.

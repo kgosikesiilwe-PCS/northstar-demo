@@ -1,0 +1,7 @@
+fastapi>=0.115,<0.116
+uvicorn>=0.34,<0.35
+jinja2>=3.1,<4
+python-multipart>=0.0.20,<0.1
+cryptography>=44,<45
+itsdangerous>=2.2,<3
+mangum>=0.17,<1

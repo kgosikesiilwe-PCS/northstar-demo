@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% block title %}{{ cfg.title }}{% endblock %}
+{% block content %}
+{% include "_icons.html" %}
+<div class="page-head">
+  <div>
+    <h1>{{ cfg.title }}</h1>
+    {% if cfg.intro %}<p class="muted">{{ cfg.intro }}</p>{% endif %}
+    {% if cfg.warning %}<p class="warning-box" style="margin-top:.6rem;">{{ cfg.warning }}</p>{% endif %}
+  </div>
+  {% if is_owner or can_edit %}
+    <a class="button primary" href="/records/{{ cfg.key }}/new">Add {{ cfg.singular }}</a>
+  {% endif %}
+</div>
+
+{% if records %}
+  {# — Medications: card layout — #}
+  {% if cfg.key == 'medications' %}
+  <div class="med-grid">
+    {% for r in records %}
+    <div class="med-card {% if r.pharmacy_name %}has-rx{% endif %}">
+      <div class="med-name">{{ r.medication_name }}</div>
+      <div class="med-dose">{{ r.dosage }}{% if r.frequency %} &nbsp;·&nbsp; {{ r.frequency }}{% endif %}</div>
+      <div class="med-meta">
+        {% if r.pharmacy_name %}<div class="med-meta-item"><strong>Pharmacy</strong>{{ r.pharmacy_name }}</div>{% endif %}
+        {% if r.pharmacy_phone %}<div class="med-meta-item"><strong>Ph. Phone</strong>{{ r.pharmacy_phone }}</div>{% endif %}
+        {% if r.prescribing_doctor %}<div class="med-meta-item"><strong>Doctor</strong>{{ r.prescribing_doctor }}</div>{% endif %}
+        {% if r.reason %}<div class="med-meta-item"><strong>Reason</strong>{{ r.reason }}</div>{% endif %}
+        {% if r.start_date %}<div class="med-meta-item"><strong>Since</strong>{{ r.start_date }}</div>{% endif %}
+      </div>
+      {% if is_owner or can_edit %}
+      <div style="display:flex;gap:.5rem;padding-top:.6rem;border-top:1px solid var(--line);">
+        <a class="button sm" href="/records/{{ cfg.key }}/{{ r.id }}/edit">Edit</a>
+        <form method="post" action="/records/{{ cfg.key }}/{{ r.id }}/delete" onsubmit="return confirm('Delete this item?')">
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          <button class="link-danger" type="submit">Delete</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  {# — Providers: card layout — #}
+  {% elif cfg.key == 'providers' %}
+  <div class="provider-grid">
+    {% for r in records %}
+    <div class="provider-card {% if r.is_pcp in [1,'1'] or r.provider_type == 'Primary care doctor / PCP' %}is-pcp{% endif %}">
+      <div class="provider-type-label">
+        {% if r.is_pcp in [1,'1'] or r.provider_type == 'Primary care doctor / PCP' %}
+          <svg width="13" height="13"><use href="#ic-star"/></svg> Primary Care / PCP
+        {% else %}
+          {{ r.provider_type }}
+        {% endif %}
+      </div>
+      <div class="provider-name">{{ r.name }}</div>
+      {% if r.practice_name %}<div class="provider-detail"><strong>Practice:</strong> {{ r.practice_name }}</div>{% endif %}
+      {% if r.specialty %}<div class="provider-detail"><strong>Specialty:</strong> {{ r.specialty }}</div>{% endif %}
+      {% if r.phone %}<div class="provider-detail"><svg width="12" height="12" style="color:var(--muted);flex-shrink:0;"><use href="#ic-phone"/></svg>{{ r.phone }}</div>{% endif %}
+      {% if r.doctor_network %}<div class="provider-detail"><strong>Network:</strong> {{ r.doctor_network }}</div>{% endif %}
+      {% if r.last_visit_date %}<div class="provider-detail" style="font-size:.78rem;color:var(--muted);">Last visit: {{ r.last_visit_date }}{% if r.next_appointment_date %} &nbsp;·&nbsp; Next: {{ r.next_appointment_date }}{% endif %}</div>{% endif %}
+      {% if is_owner or can_edit %}
+      <div style="display:flex;gap:.5rem;margin-top:.85rem;padding-top:.6rem;border-top:1px solid var(--line);">
+        <a class="button sm" href="/records/{{ cfg.key }}/{{ r.id }}/edit">Edit</a>
+        <form method="post" action="/records/{{ cfg.key }}/{{ r.id }}/delete" onsubmit="return confirm('Delete this item?')">
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          <button class="link-danger" type="submit">Delete</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  {# — Emergency contacts: contact card layout — #}
+  {% elif cfg.key == 'emergency-contacts' %}
+  <div class="contact-grid">
+    {% for r in records %}
+    <div class="contact-card">
+      <div class="contact-avatar">{{ r.name[0]|upper }}</div>
+      <div style="flex:1;">
+        <div class="contact-name">{{ r.name }} {% if r.priority_order %}<span class="priority-badge">Priority {{ r.priority_order }}</span>{% endif %}</div>
+        <div class="contact-relation">{{ r.relationship }}</div>
+        {% if r.phone %}<div class="contact-detail"><svg width="12" height="12" style="color:var(--muted);flex-shrink:0;"><use href="#ic-phone"/></svg>{{ r.phone }}</div>{% endif %}
+        {% if r.email %}<div class="contact-detail"><svg width="12" height="12" style="color:var(--muted);flex-shrink:0;"><use href="#ic-mail"/></svg>{{ r.email }}</div>{% endif %}
+        {% if is_owner or can_edit %}
+        <div style="display:flex;gap:.4rem;margin-top:.65rem;">
+          <a class="button sm" href="/records/{{ cfg.key }}/{{ r.id }}/edit">Edit</a>
+          <form method="post" action="/records/{{ cfg.key }}/{{ r.id }}/delete" onsubmit="return confirm('Delete this contact?')">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <button class="link-danger" type="submit">Remove</button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+    {% if is_owner or can_edit %}
+    <a href="/records/{{ cfg.key }}/new" class="contact-card" style="text-decoration:none;border-style:dashed;background:var(--navy-light);justify-content:center;flex-direction:column;text-align:center;gap:.4rem;min-height:130px;">
+      <svg width="28" height="28" style="color:var(--line);margin:0 auto;"><use href="#ic-person"/></svg>
+      <div style="font-size:.85rem;font-weight:700;color:var(--muted);">Add a contact</div>
+    </a>
+    {% endif %}
+  </div>
+
+  {# — Allergies: tag + info card layout — #}
+  {% elif cfg.key == 'allergies' %}
+  {% set severe = records|selectattr('severity','equalto','Severe')|list %}
+  {% if severe %}
+  <div style="margin-bottom:1rem;">
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.5rem;">Quick view</div>
+    <div class="allergy-tags">
+      {% for r in severe %}
+      <span class="allergy-tag">{{ r.allergy_name }} <span class="severity">SEVERE</span></span>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+  <div class="info-grid">
+    {% for r in records %}
+    <div class="info-card">
+      <div class="info-card-header">
+        <span class="info-card-title">{{ r.allergy_name }}</span>
+        <span class="info-card-badge">{{ r.allergy_type }}</span>
+      </div>
+      {% if r.reaction %}<div class="info-row"><span class="info-label">Reaction</span><span class="info-value">{{ r.reaction }}</span></div>{% endif %}
+      {% if r.severity %}<div class="info-row"><span class="info-label">Severity</span><span class="info-value" {% if r.severity == 'Severe' %}style="color:var(--danger);font-weight:700;"{% endif %}>{{ r.severity }}</span></div>{% endif %}
+      {% if r.notes %}<div class="info-row"><span class="info-label">Notes</span><span class="info-value">{{ r.notes }}</span></div>{% endif %}
+      {% if is_owner or can_edit %}
+      <div class="info-card-actions">
+        <a class="button sm" href="/records/{{ cfg.key }}/{{ r.id }}/edit">Edit</a>
+        <form method="post" action="/records/{{ cfg.key }}/{{ r.id }}/delete" onsubmit="return confirm('Delete?')">
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          <button class="link-danger" type="submit">Delete</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  {# — Default: info card layout for all other sections — #}
+  {% else %}
+  <div class="info-grid">
+    {% for r in records %}
+    <div class="info-card">
+      <div class="info-card-header">
+        <span class="info-card-title">
+          {% if r.medication_name %}{{ r.medication_name }}
+          {% elif r.surgery_name %}{{ r.surgery_name }}
+          {% elif r.advisor_name %}{{ r.advisor_name }}
+          {% elif r.institution_name %}{{ r.institution_name }}
+          {% elif r.category %}{{ r.category }}
+          {% elif r.policy_type %}{{ r.policy_type }}
+          {% else %}Record #{{ r.id }}{% endif %}
+        </span>
+        {% if r.policy_type %}<span class="info-card-badge">{{ r.policy_type }}</span>{% endif %}
+        {% if r.allergy_type %}<span class="info-card-badge">{{ r.allergy_type }}</span>{% endif %}
+      </div>
+      {% for fd in cfg.fields %}
+        {% if fd.name not in ['medication_name','surgery_name','advisor_name','institution_name','category','policy_type','allergy_type','allergy_name','note_text'] %}
+          {% set val = r.get(fd.name, '') %}
+          {% if val and val != '0' %}
+          <div class="info-row">
+            <span class="info-label">{{ fd.label }}</span>
+            <span class="info-value">{% if fd.encrypted %}{{ val }}{% else %}{{ val }}{% endif %}</span>
+          </div>
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+      {% if is_owner or can_edit %}
+      <div class="info-card-actions">
+        <a class="button sm" href="/records/{{ cfg.key }}/{{ r.id }}/edit">Edit</a>
+        <form method="post" action="/records/{{ cfg.key }}/{{ r.id }}/delete" onsubmit="return confirm('Delete this item?')">
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          <button class="link-danger" type="submit">Delete</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+{% else %}
+  <div class="empty">
+    <h2>No {{ cfg.title|lower }} added yet.</h2>
+    <p>Add information here so family members can find it when needed.</p>
+    {% if is_owner or can_edit %}
+    <div class="actions" style="justify-content:center;margin-top:1.25rem;">
+      <a class="button primary" href="/records/{{ cfg.key }}/new">Add {{ cfg.singular }}</a>
+    </div>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}

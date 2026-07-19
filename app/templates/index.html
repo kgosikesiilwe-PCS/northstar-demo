@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}NorthStar — Medicare Family File{% endblock %}
+{% block content %}
+{% include "_icons.html" %}
+<div class="landing-wrap">
+  <div class="landing-left">
+    <div>
+      <div style="font-size:.68rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:.6rem;">NorthStar Group</div>
+      <h1 class="landing-headline">Your Medicare and family information,<br>organized and ready when it matters.</h1>
+      <p class="landing-sub">NorthStar gives Medicare-eligible individuals one secure place to store everything a family member, caregiver, or advisor would need — from insurance cards and medications to emergency contacts and legal documents.</p>
+      <div class="landing-divider"></div>
+      <ul class="feature-list">
+        <li class="feature-item">
+          <div class="feature-icon"><svg width="16" height="16"><use href="#ic-shield"/></svg></div>
+          <div class="feature-text">
+            <strong>Medicare coverage, organized</strong>
+            <span>Store your plan details, Medicare card MBI, Part D, and advisor information — ready for annual reviews and enrollment decisions.</span>
+          </div>
+        </li>
+        <li class="feature-item">
+          <div class="feature-icon"><svg width="16" height="16"><use href="#ic-emergency"/></svg></div>
+          <div class="feature-text">
+            <strong>Emergency-ready at any time</strong>
+            <span>A printable emergency card with allergies, medications, doctors, and insurance — so family and first responders have what they need, fast.</span>
+          </div>
+        </li>
+        <li class="feature-item">
+          <div class="feature-icon"><svg width="16" height="16"><use href="#ic-users"/></svg></div>
+          <div class="feature-text">
+            <strong>Family access, your way</strong>
+            <span>Choose exactly which sections a spouse, child, or trusted person can see. Revoke access anytime. Every action is logged.</span>
+          </div>
+        </li>
+        <li class="feature-item">
+          <div class="feature-icon"><svg width="16" height="16"><use href="#ic-camera"/></svg></div>
+          <div class="feature-text">
+            <strong>Photograph cards and documents</strong>
+            <span>Take a photo of your Medicare card, insurance card, or living will directly from your phone. Everything is stored encrypted.</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+    <p class="landing-footer-note">NorthStar is not affiliated with or endorsed by Medicare or the federal government. Do not store passwords, PINs, Social Security numbers, or full financial account numbers.</p>
+  </div>
+
+  <div class="landing-right">
+    <div class="landing-form-header">
+      <h2>Get started</h2>
+      <p>Sign in to your profile or create one — it only takes a minute.</p>
+    </div>
+    <div class="form-tabs">
+      <div class="form-tab active" id="ftab-signin" onclick="switchFormTab('signin')">Sign in</div>
+      <div class="form-tab" id="ftab-create" onclick="switchFormTab('create')">Create profile</div>
+    </div>
+
+    <div id="fpanel-signin">
+      {% for flash in flashes %}
+        <div class="flash {{ flash.level }}" style="margin-bottom:.85rem;">{{ flash.message }}</div>
+      {% endfor %}
+      <form method="post" action="/login">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <div style="display:flex;flex-direction:column;gap:.8rem;">
+          <label>Email address <input name="email" type="email" required autocomplete="email" placeholder="mary@example.com"></label>
+          <label>Password <input name="password" type="password" required autocomplete="current-password" placeholder="••••••••••"></label>
+        </div>
+        <div style="margin-top:1.25rem;">
+          <button class="button primary" type="submit" style="width:100%;justify-content:center;">Sign in to NorthStar</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="fpanel-create" style="display:none;">
+      <form method="post" action="/register">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <div style="display:flex;flex-direction:column;gap:.8rem;">
+          <label>Full legal name <input name="full_name" required autocomplete="name" placeholder="Mary Johnson"></label>
+          <div class="two-col" style="gap:.65rem;">
+            <label>Date of birth <input name="date_of_birth" type="date"></label>
+            <label>Phone <input name="phone" autocomplete="tel" placeholder="702-555-0100"></label>
+          </div>
+          <label>Email address <input name="email" type="email" required autocomplete="email" placeholder="mary@example.com"></label>
+          <label>Password
+            <input name="password" type="password" required minlength="10" autocomplete="new-password" placeholder="At least 10 characters">
+            <span class="help">Minimum 10 characters.</span>
+          </label>
+        </div>
+        <div style="margin-top:1.25rem;">
+          <button class="button primary" type="submit" style="width:100%;justify-content:center;">Create my NorthStar profile</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="trust-bar">
+      <div class="trust-item"><svg width="13" height="13"><use href="#ic-shield"/></svg>Encrypted storage</div>
+      <div class="trust-item"><svg width="13" height="13"><use href="#ic-check"/></svg>No ads, ever</div>
+      <div class="trust-item"><svg width="13" height="13"><use href="#ic-log"/></svg>Full audit log</div>
+    </div>
+  </div>
+</div>
+
+<script>
+function switchFormTab(tab){
+  document.getElementById('ftab-signin').classList.toggle('active', tab==='signin');
+  document.getElementById('ftab-create').classList.toggle('active', tab==='create');
+  document.getElementById('fpanel-signin').style.display = tab==='signin' ? 'block' : 'none';
+  document.getElementById('fpanel-create').style.display = tab==='create' ? 'block' : 'none';
+}
+// If there are flash errors from a failed login, keep signin tab active
+{% if flashes %}switchFormTab('signin');{% endif %}
+</script>
+{% endblock %}

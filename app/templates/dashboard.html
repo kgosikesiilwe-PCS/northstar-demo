@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+{% include "_icons.html" %}
+<div class="dash-hero">
+  <div>
+    <div class="dash-hero-name">Welcome, {{ profile.preferred_name or profile.full_name }}</div>
+    <div class="dash-hero-sub">Last reviewed: {{ profile.last_reviewed_at or 'Not reviewed yet' }}{% if profile.city %} &nbsp;·&nbsp; {{ profile.city }}{% if profile.state %}, {{ profile.state }}{% endif %}{% endif %}</div>
+    <div class="dash-actions-row">
+      <a href="/emergency-card" class="dash-quick-btn emergency">
+        <svg width="13" height="13"><use href="#ic-emergency"/></svg> Emergency Card
+      </a>
+      <a href="/medicare-review" class="dash-quick-btn review">
+        <svg width="13" height="13"><use href="#ic-shield"/></svg> Medicare Review
+      </a>
+      <form method="post" action="/mark-reviewed" style="margin:0;">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <button type="submit" class="dash-quick-btn mark">
+          <svg width="13" height="13"><use href="#ic-check"/></svg> Mark reviewed today
+        </button>
+      </form>
+    </div>
+  </div>
+  <div class="dash-readiness-widget">
+    {% set total = checklist_total|default(6) %}
+    {% set done = checklist_done|default(0) %}
+    <div class="dash-readiness-num">{{ done }}/{{ total }}</div>
+    <div class="dash-readiness-label">Readiness checklist</div>
+    <div class="dash-readiness-bar">
+      <div class="dash-readiness-fill" style="width:{{ (done/total*100)|int }}%;"></div>
+    </div>
+  </div>
+</div>
+
+{% if profile_choices|length > 1 %}
+<form method="get" action="/dashboard" class="switcher">
+  <label>Switch profile
+    <select name="profile_id" onchange="this.form.submit()">
+      {% for choice in profile_choices %}
+        <option value="{{ choice.id }}" {% if choice.id == profile.id %}selected{% endif %}>
+          {{ choice.full_name }}{% if choice.relation != 'owner' %} — {{ choice.relation }}{% endif %}
+        </option>
+      {% endfor %}
+    </select>
+  </label>
+</form>
+{% endif %}
+
+<div class="dash-section-label">Medicare &amp; Health</div>
+<div class="dash-grid">
+  <a href="/medicare-review" class="dash-card" style="text-decoration:none;">
+    <svg class="dash-card-icon" viewBox="0 0 20 20" fill="currentColor"><use href="#ic-shield"/></svg>
+    <div class="dash-card-title">Medicare</div>
+    <div class="dash-card-count">{{ counts.insurance }} policies · {{ counts['medicare-advisor'] }} advisor</div>
+  </a>
+  <a href="/records/medications" class="dash-card" style="text-decoration:none;">
+    <svg class="dash-card-icon" viewBox="0 0 20 20" fill="currentColor"><use href="#ic-heart"/></svg>
+    <div class="dash-card-title">Medications</div>
+    <div class="dash-card-count">{{ counts.medications }} listed</div>
+  </a>
+  <a href="/records/providers" class="dash-card" style="text-decoration:none;">
+    <svg class="dash-card-icon" viewBox="0 0 20 20" fill="currentColor"><use href="#ic-stethoscope"/></svg>
+    <div class="dash-card-title">Doctors</div>
+    <div class="dash-card-count">{{ counts.providers }} listed</div>
+  </a>
+  <a href="/records/allergies" class="dash-card" style="text-decoration:none;">
+    <svg class="dash-card-icon" viewBox="0 0 20 20" fill="currentColor"><use href="#ic-alert"/></svg>
+    <div class="dash-card-title">Allergies</div>
+    <div class="dash-card-count">{{ counts.allergies }} listed</div>
+  </a>
+</div>
+
+<div class="dash-section-label">People &amp; Access</div>
+<div class="dash-grid">
+  <a href="/records/emergency-contacts" class="dash-card" style="text-decoration:none;">
+    <svg class="dash-card-icon" viewBox="0 0 20 20" fill="currentColor"><use href="#ic-phone"/></svg>
+    <div class="dash-card-title">Emergency Contacts</div>
+    <div class="dash-card-count">{{ counts['emergency-contacts'] }} listed</div>
+  </a>
+  {% if is_owner %}
+  <a href="/family-access" class="dash-card" style="text-decoration:none;">
+    <svg class="dash-card-icon" viewBox="0 0 20 20" fill="currentColor"><use href="#ic-users"/></svg>
+    <div class="dash-card-title">Family Access</div>
+    <div class="dash-card-count">{{ trusted_count }} trusted people</div>
+  </a>
+  {% endif %}
+  <a href="/records/surgeries" class="dash-card" style="text-decoration:none;">
+    <svg class="dash-card-icon" viewBox="0 0 20 20" fill="currentColor"><use href="#ic-building"/></svg>
+    <div class="dash-card-title">Surgeries</div>
+    <div class="dash-card-count">{{ counts.surgeries }} listed</div>
+  </a>
+  <a href="/profile" class="dash-card {% if not profile.date_of_birth %}needs-action{% endif %}" style="text-decoration:none;">
+    <svg class="dash-card-icon" viewBox="0 0 20 20" fill="currentColor"><use href="#ic-person"/></svg>
+    <div class="dash-card-title">Profile</div>
+    <div class="dash-card-count">{% if not profile.date_of_birth %}Complete your info{% else %}View &amp; edit{% endif %}</div>
+  </a>
+</div>
+
+<div class="dash-section-label">Records &amp; Documents</div>
+<div class="dash-grid">
+  <a href="/documents" class="dash-card" style="text-decoration:none;">
+    <svg class="dash-card-icon" viewBox="0 0 20 20" fill="currentColor"><use href="#ic-doc"/></svg>
+    <div class="dash-card-title">Documents</div>
+    <div class="dash-card-count">{{ doc_count }} saved</div>
+  </a>
+  <a href="/records/important-notes" class="dash-card" style="text-decoration:none;">
+    <svg class="dash-card-icon" viewBox="0 0 20 20" fill="currentColor"><use href="#ic-note"/></svg>
+    <div class="dash-card-title">Important Info</div>
+    <div class="dash-card-count">{{ counts['important-notes'] }} notes</div>
+  </a>
+  <a href="/records/financial-locators" class="dash-card" style="text-decoration:none;">
+    <svg class="dash-card-icon" viewBox="0 0 20 20" fill="currentColor"><use href="#ic-cash"/></svg>
+    <div class="dash-card-title">Financial Locator</div>
+    <div class="dash-card-count">{{ counts['financial-locators'] }} items</div>
+  </a>
+  <a href="/audit" class="dash-card" style="text-decoration:none;">
+    <svg class="dash-card-icon" viewBox="0 0 20 20" fill="currentColor"><use href="#ic-log"/></svg>
+    <div class="dash-card-title">Audit Log</div>
+    <div class="dash-card-count">View access history</div>
+  </a>
+</div>
+{% endblock %}

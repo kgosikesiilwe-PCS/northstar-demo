@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Profile{% endblock %}
+{% block content %}
+<div class="form-card">
+  <h1>Personal Information</h1>
+  <p class="warning-box">Photo ID upload is optional and handled in Documents. Do not upload a Social Security card.</p>
+  <form method="post" action="/profile">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <div class="two-col">
+      <label>Full legal name <input name="full_name" value="{{ profile.full_name or '' }}" required></label>
+      <label>Preferred name <input name="preferred_name" value="{{ profile.preferred_name or '' }}"></label>
+      <label>Date of birth <input name="date_of_birth" type="date" value="{{ profile.date_of_birth or '' }}"></label>
+      <label>Phone <input name="phone" value="{{ profile.phone or '' }}"></label>
+      <label>Email <input name="email" type="email" value="{{ profile.email or '' }}"></label>
+      <label>Preferred language <input name="preferred_language" value="{{ profile.preferred_language or '' }}"></label>
+      <label>Address line 1 <input name="address_line_1" value="{{ profile.address_line_1 or '' }}"></label>
+      <label>Address line 2 <input name="address_line_2" value="{{ profile.address_line_2 or '' }}"></label>
+      <label>City <input name="city" value="{{ profile.city or '' }}"></label>
+      <label>State <input name="state" value="{{ profile.state or '' }}"></label>
+      <label>ZIP <input name="zip" value="{{ profile.zip or '' }}"></label>
+    </div>
+    <div class="actions"><button class="button primary" type="submit">Save profile</button></div>
+  </form>
+</div>
+{% endblock %}

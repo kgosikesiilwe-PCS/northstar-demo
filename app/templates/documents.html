@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Documents{% endblock %}
+{% block content %}
+{% include "_icons.html" %}
+<div class="page-head">
+  <div><h1>Documents</h1><p class="muted">Upload files or photographs of cards and documents, or note where originals are located.</p></div>
+</div>
+
+{% if is_owner or can_upload %}
+<div class="form-card">
+  <h2 style="margin-bottom:.9rem;">Add a document</h2>
+  <form method="post" action="/documents" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <div class="two-col">
+      <label>Document type
+        <select name="document_type" id="doc-type" onchange="syncDocName()">
+          {% for doc_type in doc_types %}
+          <option value="{{ doc_type }}">{{ doc_type }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Display name
+        <input name="display_name" id="doc-display-name" placeholder="Auto-fills from type — edit if needed">
+        <span class="help">Auto-fills when you choose a type above.</span>
+      </label>
+    </div>
+    <div style="margin:1rem 0;">
+      <div style="font-size:.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.6rem;">Upload file or take a photo</div>
+      <div class="photo-upload-area">
+        <input type="file" name="file" accept="image/*,application/pdf,.txt" capture="environment">
+        <svg width="30" height="30" style="color:var(--navy-mid);margin:0 auto .4rem;display:block;"><use href="#ic-camera"/></svg>
+        <div class="photo-upload-label">Take a photo or upload a file</div>
+        <div class="photo-upload-hint">Works on phones too — tap to open camera &nbsp;·&nbsp; JPG, PNG, PDF &nbsp;·&nbsp; Max {{ max_mb }} MB &nbsp;·&nbsp; Files are encrypted before storage</div>
+      </div>
+    </div>
+    <label>Where original is located <input name="document_location_text" placeholder="Fireproof safe in bedroom closet"></label>
+    <label style="margin-top:.75rem;">Notes <textarea name="notes" style="margin-top:.28rem;min-height:80px;"></textarea></label>
+    <div class="actions"><button class="button primary" type="submit">Save document</button></div>
+  </form>
+</div>
+{% endif %}
+
+{% if documents %}
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>Name</th><th>Type</th><th>Location</th><th>Saved</th><th>Actions</th></tr></thead>
+    <tbody>
+      {% for doc in documents %}
+      <tr>
+        <td>{{ doc.display_name }}</td>
+        <td>{{ doc.document_type }}</td>
+        <td>{{ doc.document_location_text or 'Stored file' }}</td>
+        <td>{{ doc.created_at }}</td>
+        <td class="actions-cell">
+          {% if doc.encrypted_filename and (is_owner or can_download) %}
+            <a class="button sm" href="/documents/{{ doc.id }}/download">Download</a>
+          {% endif %}
+          {% if is_owner or can_edit %}
+          <form method="post" action="/documents/{{ doc.id }}/delete" onsubmit="return confirm('Delete this document?')">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <button class="link-danger" type="submit">Delete</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty">
+  <p>No documents added yet.</p>
+  <p style="margin-top:.5rem;font-size:.88rem;">Add insurance cards, legal documents, or note where originals are kept.</p>
+</div>
+{% endif %}
+
+<script>
+const yearTypes = ['Medicare card','Insurance card','Photo ID'];
+function syncDocName(){
+  const sel = document.getElementById('doc-type');
+  const inp = document.getElementById('doc-display-name');
+  if(sel && inp && sel.value && !inp.dataset.edited){
+    const year = new Date().getFullYear();
+    inp.value = yearTypes.includes(sel.value) ? year + ' ' + sel.value : sel.value;
+  }
+}
+document.getElementById('doc-display-name')?.addEventListener('input', function(){
+  this.dataset.edited = '1';
+});
+</script>
+{% endblock %}

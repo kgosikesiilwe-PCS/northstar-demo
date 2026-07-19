@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Audit Log{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Audit Log</h1><p class="muted">Recent profile access and changes — last 250 events.</p></div>
+</div>
+{% if logs %}
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Section</th><th>IP</th></tr></thead>
+    <tbody>
+      {% for log in logs %}
+      <tr>
+        <td>{{ log.created_at }}</td>
+        <td>{{ log.actor_name or 'System' }}</td>
+        <td>{{ log.action }}</td>
+        <td>{{ log.section or '—' }}</td>
+        <td>{{ log.ip_address or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty"><p>No audit events yet.</p></div>
+{% endif %}
+{% endblock %}

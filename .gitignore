@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.env
+instance/*.sqlite3
+instance/*.key
+instance/*.txt
+instance/uploads/*
+!instance/uploads/.gitkeep

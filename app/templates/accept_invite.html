@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Accept family access invite{% endblock %}
+{% block content %}
+<div class="form-card narrow">
+  <h1>Accept invite</h1>
+  <p><strong>{{ invite.profile_name }}</strong> has authorized you as {{ invite.relationship }}.</p>
+  <p style="margin:.5rem 0;">You will be able to access:</p>
+  <div style="display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:1.1rem;">
+    {% for section in allowed %}<span class="pill">{{ section.replace('_',' ') }}</span>{% endfor %}
+  </div>
+  <form method="post" action="/accept-invite/{{ token }}">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    {% if not user %}
+    <div style="display:flex;flex-direction:column;gap:.8rem;">
+      <label>Your name <input name="full_name" value="{{ invite.name }}" required></label>
+      <label>Email <input name="email" type="email" value="{{ invite.email }}" required></label>
+      <label>Password
+        <input name="password" type="password" minlength="10" required>
+        <span class="help">If you already have an account, enter that account's password.</span>
+      </label>
+    </div>
+    {% else %}
+    <p>You are signed in as <strong>{{ user.email }}</strong>.</p>
+    {% endif %}
+    <div class="actions"><button class="button primary" type="submit">Accept access</button></div>
+  </form>
+</div>
+{% endblock %}
