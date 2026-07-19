@@ -6,3 +6,4 @@ instance/*.key
 instance/*.txt
 instance/uploads/*
 !instance/uploads/.gitkeep
+.venv/
