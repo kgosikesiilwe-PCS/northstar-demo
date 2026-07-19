@@ -3,7 +3,7 @@ services:
     name: northstar-demo
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python -m app.main init-db && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: rm -f instance/northstar.sqlite3 && python -m app.main init-db && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: NORTHSTAR_SESSION_SECRET
         sync: false
