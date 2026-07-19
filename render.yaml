@@ -3,16 +3,14 @@ services:
     name: northstar-demo
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: python -m app.main init-db && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: NORTHSTAR_SESSION_SECRET
         sync: false
       - key: NORTHSTAR_FERNET_KEY
         sync: false
       - key: DATABASE_URL
-        fromDatabase:
-          name: northstar-db
-          property: connectionString
+        sync: false
     healthCheckPath: /ping
 
   - type: cron
@@ -20,7 +18,7 @@ services:
     runtime: python
     schedule: "*/10 * * * *"
     buildCommand: pip install requests
-    startCommand: python -c "import requests; r = requests.get('https://northstar-demo.onrender.com/ping', timeout=10); print(r.json())"
+    startCommand: python -c "import requests; requests.get('https://northstar-demo.onrender.com/ping', timeout=10)"
 
 databases:
   - name: northstar-db
