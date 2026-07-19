@@ -1236,3 +1236,13 @@ if __name__ == "__main__":
         print(f"Initialized database at {db.db_path()}")
     else:
         print("Run with: uvicorn app.main:app --reload")
+
+
+# ---------------------------------------------------------------------------
+# Keep-alive ping endpoint (called by Render cron or external scheduler)
+# ---------------------------------------------------------------------------
+
+@app.get("/ping")
+async def ping():
+    """Health check — keeps Render free tier warm."""
+    return {"status": "ok", "service": "NorthStar Medicare Family File"}
