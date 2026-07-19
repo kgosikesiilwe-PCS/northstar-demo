@@ -436,7 +436,7 @@ def parse_allowed_sections(raw: str | None) -> list[str]:
 
 
 def active_grants_for_user(user_id: int) -> list[dict[str, Any]]:
-    rows = db.query_all(
+    rows = db.query(
         """
         SELECT ag.*, bp.full_name AS profile_name, tp.relationship AS relationship, tp.name AS trusted_name
         FROM access_grants ag
@@ -585,7 +585,7 @@ def values_from_form(form: Any, cfg: SectionConfig) -> tuple[dict[str, Any], str
 
 def display_rows(cfg: SectionConfig, profile_id: int) -> list[dict[str, Any]]:
     _assert_safe_table(cfg)
-    rows = db.query_all(f"SELECT * FROM {cfg.table} WHERE {cfg.profile_column} = ? ORDER BY id DESC", (profile_id,))
+    rows = db.query(f"SELECT * FROM {cfg.table} WHERE {cfg.profile_column} = ? ORDER BY id DESC", (profile_id,))
     output = []
     for row in rows:
         item = dict(row)
@@ -723,7 +723,7 @@ async def dashboard(request: Request, profile_id: int | None = None):
     doc_count = db.query_one("SELECT COUNT(*) AS c FROM documents WHERE beneficiary_profile_id = ?", (profile["id"],))["c"]
     trusted_count = db.query_one("SELECT COUNT(*) AS c FROM trusted_people WHERE beneficiary_profile_id = ?", (profile["id"],))["c"]
     profile_choices = []
-    owned = db.query_all("SELECT id, full_name, 'owner' AS relation FROM beneficiary_profiles WHERE owner_user_id = ?", (ctx["user"]["id"],))
+    owned = db.query("SELECT id, full_name, 'owner' AS relation FROM beneficiary_profiles WHERE owner_user_id = ?", (ctx["user"]["id"],))
     for row in owned:
         profile_choices.append(dict(row))
     for grant in active_grants_for_user(ctx["user"]["id"]):
@@ -759,7 +759,7 @@ async def medicare_review(request: Request):
     allergies = display_rows(SECTION_CONFIGS["allergies"], profile_id) if has_access(ctx, "allergies") else []
     documents = [
         dict(row)
-        for row in db.query_all("SELECT * FROM documents WHERE beneficiary_profile_id = ? ORDER BY created_at DESC", (profile_id,))
+        for row in db.query("SELECT * FROM documents WHERE beneficiary_profile_id = ? ORDER BY created_at DESC", (profile_id,))
         if has_access(ctx, dict(row)["access_section"], "view")
     ]
     insurance_docs = [d for d in documents if d.get("access_section") == "insurance"]
@@ -876,7 +876,8 @@ async def record_new_post(request: Request, section_key: str):
         columns.append("source")
         params.append(f"{ctx['user']['full_name']} ({'beneficiary' if ctx['is_owner'] else 'trusted person'})")
     sql = f"INSERT INTO {cfg.table} ({', '.join(columns)}) VALUES ({', '.join(['?'] * len(columns))})"
-    record_id = db.execute(sql, params)
+    db.execute(sql, params)
+    record_id = db.last_insert_id()
     audit(request, ctx["profile"]["id"], "created record", cfg.access_section, record_id)
     set_flash(request, f"{cfg.singular.title()} added.", "success")
     return redirect(f"/records/{section_key}")
@@ -943,7 +944,7 @@ async def record_delete(request: Request, section_key: str, record_id: int):
 @app.get("/documents", response_class=HTMLResponse)
 async def documents_get(request: Request):
     ctx = get_profile_context(request)
-    rows = db.query_all("SELECT * FROM documents WHERE beneficiary_profile_id = ? ORDER BY created_at DESC", (ctx["profile"]["id"],))
+    rows = db.query("SELECT * FROM documents WHERE beneficiary_profile_id = ? ORDER BY created_at DESC", (ctx["profile"]["id"],))
     documents = [dict(row) for row in rows if has_access(ctx, dict(row)["access_section"], "view")]
     audit(request, ctx["profile"]["id"], "viewed documents", "documents")
     return render(request, "documents.html", {"documents": documents, "doc_types": list(DOC_TYPE_TO_SECTION.keys()), "max_mb": MAX_UPLOAD_BYTES // (1024 * 1024)}, ctx)
@@ -989,7 +990,7 @@ async def documents_post(request: Request):
     if not encrypted_filename and not document_location_text:
         set_flash(request, "Upload a file or enter where the original document is located.", "danger")
         return redirect("/documents")
-    doc_id = db.execute(
+    db.execute(
         """
         INSERT INTO documents (beneficiary_profile_id, document_type, display_name, original_filename, encrypted_filename, file_sha256, file_size, mime_type, document_location_text, notes, uploaded_by, access_section)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -1052,7 +1053,7 @@ async def family_access_get(request: Request):
     ctx = get_profile_context(request)
     if not ctx["is_owner"]:
         raise PermissionError("Only the beneficiary/profile owner can manage family access.")
-    trusted = db.query_all(
+    trusted = db.query(
         """
         SELECT tp.*, ag.id AS grant_id, ag.access_level, ag.allowed_sections, ag.can_edit, ag.can_upload, ag.can_download, ag.expires_at, ag.revoked_at, ag.recipient_user_id
         FROM trusted_people tp
@@ -1089,23 +1090,25 @@ async def family_access_invite(request: Request):
         set_flash(request, "Name, relationship, email, and at least one section are required.", "danger")
         return redirect("/family-access")
     token = new_token(32)
-    trusted_person_id = db.execute(
+    db.execute(
         "INSERT INTO trusted_people (beneficiary_profile_id, name, relationship, email, phone, invite_token, invite_status) VALUES (?, ?, ?, ?, ?, ?, 'sent')",
         (ctx["profile"]["id"], name, relationship, email, phone, token),
     )
+    trusted_person_id = db.last_insert_id()
     access_level = str(form.get("access_level", "viewer"))
     can_edit = 1 if access_level in {"editor", "manager"} else 0
     can_upload = 1 if access_level in {"editor", "manager"} else 0
     can_download = 1 if form.get("can_download") else 0
     expires_at = str(form.get("expires_at", "")).strip() or None
     signature = str(form.get("electronic_signature", "")).strip() or ctx["profile"]["full_name"]
-    grant_id = db.execute(
+    db.execute(
         """
         INSERT INTO access_grants (beneficiary_profile_id, trusted_person_id, access_level, allowed_sections, can_view, can_edit, can_upload, can_download, expires_at, electronic_signature, signed_at, created_by)
         VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)
         """,
         (ctx["profile"]["id"], trusted_person_id, access_level, json.dumps(sections), can_edit, can_upload, can_download, expires_at, signature, ctx["user"]["id"]),
     )
+    grant_id = db.last_insert_id()
     audit(request, ctx["profile"]["id"], "granted family access", "family_access", grant_id)
     invite_url = str(request.url_for("accept_invite_get", token=token))
     set_flash(request, f"Family access created. Copy this invite link: {invite_url}", "success")
@@ -1185,7 +1188,8 @@ async def accept_invite_post(request: Request, token: str):
             except ValueError as exc:
                 set_flash(request, str(exc), "danger")
                 return redirect(f"/accept-invite/{token}")
-            user_id = db.execute("INSERT INTO users (email, full_name, password_hash) VALUES (?, ?, ?)", (email, full_name or invite["name"], password_hash))
+            db.execute("INSERT INTO users (email, full_name, password_hash) VALUES (?, ?, ?)", (email, full_name or invite["name"], password_hash))
+            user_id = db.last_insert_id()
             user = row_to_dict(db.query_one("SELECT * FROM users WHERE id = ?", (user_id,)))
         request.session["user_id"] = user["id"]
     db.execute("UPDATE access_grants SET recipient_user_id = ? WHERE id = ?", (user["id"], invite["grant_id"]))
@@ -1205,7 +1209,7 @@ async def emergency_card(request: Request):
     ctx = get_profile_context(request)
     require_section(ctx, "emergency_contacts", "view")
     profile_id = ctx["profile"]["id"]
-    contacts = [dict(r) for r in db.query_all("SELECT * FROM trusted_people WHERE beneficiary_profile_id = ? AND is_emergency_contact = 1 ORDER BY priority_order ASC", (profile_id,))]
+    contacts = [dict(r) for r in db.query("SELECT * FROM trusted_people WHERE beneficiary_profile_id = ? AND is_emergency_contact = 1 ORDER BY priority_order ASC", (profile_id,))]
     meds = display_rows(SECTION_CONFIGS["medications"], profile_id) if has_access(ctx, "medications") else []
     allergies = display_rows(SECTION_CONFIGS["allergies"], profile_id) if has_access(ctx, "allergies") else []
     providers = display_rows(SECTION_CONFIGS["providers"], profile_id) if has_access(ctx, "providers") else []
@@ -1220,7 +1224,7 @@ async def audit_log(request: Request):
     ctx = get_profile_context(request)
     if not ctx["is_owner"]:
         raise PermissionError("Only the beneficiary/profile owner can view the audit log.")
-    rows = db.query_all(
+    rows = db.query(
         """
         SELECT al.*, u.full_name AS actor_name
         FROM audit_logs al

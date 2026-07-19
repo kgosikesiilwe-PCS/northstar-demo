@@ -29,10 +29,12 @@ def connect() -> sqlite3.Connection:
     return conn
 
 
-def execute(sql: str, params: Iterable[Any] = ()) -> None:
+def execute(sql: str, params: Iterable[Any] = ()) -> int:
+    """Execute a write query and return the last inserted row ID (0 for non-INSERT)."""
     with connect() as conn:
-        conn.execute(sql, list(params))
+        cursor = conn.execute(sql, list(params))
         conn.commit()
+        return cursor.lastrowid or 0
 
 
 def query(sql: str, params: Iterable[Any] = ()) -> list[sqlite3.Row]:
