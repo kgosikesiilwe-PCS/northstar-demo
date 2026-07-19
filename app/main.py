@@ -49,6 +49,74 @@ async def lifespan(app_instance: FastAPI):
 
 app = FastAPI(title="NorthStar Medicare Family File MVP", lifespan=lifespan)
 app.add_middleware(SessionMiddleware, secret_key=session_secret(), same_site="lax", https_only=False)
+
+# ---------------------------------------------------------------------------
+# Demo password gate — set DEMO_PASSWORD env var to enable
+# ---------------------------------------------------------------------------
+
+DEMO_PASSWORD = os.getenv("DEMO_PASSWORD", "")
+
+_GATE_HTML = """<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NorthStar — Demo Access</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:system-ui,sans-serif;background:#0B1E38;min-height:100vh;display:flex;align-items:center;justify-content:center;}
+.card{background:#fff;border-radius:16px;padding:2.5rem;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.logo{display:flex;align-items:center;gap:.6rem;margin-bottom:1.75rem;}
+.brand{font-family:Georgia,serif;font-size:1.4rem;font-weight:700;color:#0B1E38;}
+.divider{width:36px;height:3px;background:#A4814D;border-radius:2px;margin-bottom:1.5rem;}
+h1{font-family:Georgia,serif;font-size:1.3rem;color:#0B1E38;margin-bottom:.4rem;}
+p{font-size:.88rem;color:#5A6478;margin-bottom:1.5rem;}
+label{display:flex;flex-direction:column;gap:.3rem;font-weight:600;font-size:.88rem;margin-bottom:1rem;}
+input{padding:.65rem .85rem;border:1.5px solid #C4CBD8;border-radius:8px;font:inherit;font-size:.95rem;}
+input:focus{outline:none;border-color:#0B1E38;}
+button{width:100%;padding:.75rem;background:#0B1E38;color:#fff;border:none;border-radius:8px;font:inherit;font-size:.95rem;font-weight:700;cursor:pointer;}
+button:hover{background:#1A3256;}
+.error{background:#FDE7E9;border:1px solid #F5B8BB;border-radius:6px;padding:.6rem .85rem;font-size:.85rem;color:#B3261E;margin-bottom:1rem;}
+</style></head>
+<body><div class="card">
+<div class="logo">
+<svg width="30" height="30" viewBox="0 0 34 34" fill="none">
+<polygon points="3,27 3,7 8,7 17,19 17,7 22,7 22,27 17,27 8,15 8,27" fill="#0B1E38"/>
+<path d="M25 3L26.1 7.9L31 9L26.1 10.1L25 15L23.9 10.1L19 9L23.9 7.9Z" fill="#A4814D"/>
+</svg><span class="brand">NorthStar</span></div>
+<div class="divider"></div>
+<h1>Demo access</h1>
+<p>This is a private demo. Enter the access password to continue.</p>
+{error}
+<form method="post" action="/demo-login">
+<label>Password<input name="pw" type="password" autofocus placeholder="Enter demo password"></label>
+<button type="submit">Enter demo</button>
+</form>
+</div></body></html>"""
+
+_ALLOWED_PATHS = {"/demo-login", "/ping", "/login", "/register", "/logout"}
+
+@app.middleware("http")
+async def demo_gate_middleware(request: Request, call_next):
+    if not DEMO_PASSWORD:
+        return await call_next(request)
+    path = request.url.path
+    if path.startswith("/static") or path.startswith("/accept-invite") or path.startswith("/seed-demo") or path in _ALLOWED_PATHS:
+        return await call_next(request)
+    if request.cookies.get("demo_access") == DEMO_PASSWORD:
+        return await call_next(request)
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse(_GATE_HTML.format(error=""))
+
+
+@app.post("/demo-login")
+async def demo_login_post(request: Request):
+    from fastapi.responses import RedirectResponse, HTMLResponse
+    form = await request.form()
+    pw = str(form.get("pw", ""))
+    if pw == DEMO_PASSWORD:
+        resp = RedirectResponse("/", status_code=303)
+        resp.set_cookie("demo_access", DEMO_PASSWORD, max_age=86400*7, httponly=True, samesite="lax")
+        return resp
+    return HTMLResponse(_GATE_HTML.format(error='<div class="error">Incorrect password. Try again.</div>'))
+
 app.mount("/static", StaticFiles(directory=Path(__file__).resolve().parent / "static"), name="static")
 templates = Jinja2Templates(directory=Path(__file__).resolve().parent / "templates")
 
