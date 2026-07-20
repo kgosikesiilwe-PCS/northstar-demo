@@ -103,7 +103,7 @@ async def demo_gate_middleware(request: Request, call_next):
     if request.cookies.get("demo_access") == DEMO_PASSWORD:
         return await call_next(request)
     from fastapi.responses import HTMLResponse
-    return HTMLResponse(_GATE_HTML.format(error=""))
+    return HTMLResponse(_GATE_HTML.replace("{error}", ""))
 
 
 @app.post("/demo-login")
@@ -115,7 +115,7 @@ async def demo_login_post(request: Request):
         resp = RedirectResponse("/", status_code=303)
         resp.set_cookie("demo_access", DEMO_PASSWORD, max_age=86400*7, httponly=True, samesite="lax")
         return resp
-    return HTMLResponse(_GATE_HTML.format(error='<div class="error">Incorrect password. Try again.</div>'))
+    return HTMLResponse(_GATE_HTML.replace("{error}", '<div class="error">Incorrect password. Try again.</div>'))
 
 app.mount("/static", StaticFiles(directory=Path(__file__).resolve().parent / "static"), name="static")
 templates = Jinja2Templates(directory=Path(__file__).resolve().parent / "templates")
