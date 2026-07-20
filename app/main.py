@@ -44,7 +44,96 @@ _VALID_PROFILE_COLUMNS: frozenset[str] = frozenset({"beneficiary_profile_id"})
 @asynccontextmanager
 async def lifespan(app_instance: FastAPI):
     db.init_db()
+    _auto_seed()
     yield
+
+
+def _auto_seed():
+    """Seed the demo account on every cold boot if it doesn't exist."""
+    import os as _os
+    if not _os.getenv("SEED_TOKEN"):
+        return  # Only auto-seed when SEED_TOKEN is set (i.e. on Render)
+    try:
+        existing = db.query_one("SELECT id FROM users WHERE email = ?", ("demo@northstar-demo.com",))
+        if existing:
+            return
+        from app.security import hash_password as _hp
+        from app.crypto import encrypt_text as _enc
+        uid = db.execute(
+            "INSERT INTO users (email, phone, full_name, password_hash, role, status) VALUES (?,?,?,?,?,?)",
+            ("demo@northstar-demo.com","702-555-0100","Mary Johnson",_hp("NorthStarDemo2026!"),"user","active"))
+        pid = db.execute(
+            "INSERT INTO beneficiary_profiles (owner_user_id, full_name, preferred_name, date_of_birth, address_line_1, address_line_2, city, state, zip, phone, email, preferred_language, last_reviewed_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (uid,"Mary Johnson","Mary","1945-03-15","1234 Desert Sage Drive","Unit 1","Las Vegas","NV","89117","702-555-0100","mary.johnson@example.com","English","2026-07-01"))
+        db.execute("INSERT INTO medicare_cards (beneficiary_profile_id, mbi_encrypted, name_on_card, part_a_date, part_b_date) VALUES (?,?,?,?,?)",
+            (pid,_enc("1EG4-TE5-MK72"),"MARY L JOHNSON","2010-03-01","2010-03-01"))
+        for name,rel,phone,email,addr,pri in [
+            ("David Johnson","Spouse","702-555-0101","david.johnson@example.com","1234 Desert Sage Drive, Las Vegas NV 89117",1),
+            ("Sarah Johnson","Daughter","702-555-0155","sarah.johnson@example.com","5678 Sunrise Blvd, Henderson NV 89002",2),
+            ("Michael Torres","Son","702-555-0188","michael.torres@example.com","900 Lake Mead Pkwy, Las Vegas NV 89015",3)]:
+            db.execute("INSERT INTO trusted_people (beneficiary_profile_id, name, relationship, phone, email, address, is_emergency_contact, priority_order, invite_status) VALUES (?,?,?,?,?,?,?,?,?)",
+                (pid,name,rel,phone,email,addr,1,pri,"created"))
+        for mn,dose,freq,ph,phph,doc,rsn,start,notes in [
+            ("Metformin","500 mg","Twice daily with meals","CVS Pharmacy","702-555-0199","Dr. Elena Ramirez","Type 2 diabetes","2018-01-15","Take with food"),
+            ("Lisinopril","10 mg","Once daily in the morning","CVS Pharmacy","702-555-0199","Dr. Elena Ramirez","High blood pressure","2018-03-01","Monitor for dry cough"),
+            ("Atorvastatin","20 mg","Once daily at bedtime","Walgreens Summerlin","702-555-0210","Dr. Kevin Park","High cholesterol","2020-07-15","Avoid grapefruit juice"),
+            ("Aspirin","81 mg","Once daily","CVS Pharmacy","702-555-0199","Dr. Elena Ramirez","Cardiac prevention","2018-01-15","Take with water"),
+            ("Amlodipine","5 mg","Once daily","Walgreens Summerlin","702-555-0210","Dr. Kevin Park","Chest pain / angina","2021-04-10","May cause ankle swelling"),
+            ("Vitamin D3","2000 IU","Once daily with breakfast","","","Dr. Elena Ramirez","Bone health","2019-06-01","OTC supplement")]:
+            db.execute("INSERT INTO medications (beneficiary_profile_id, medication_name, dosage, frequency, pharmacy_name, pharmacy_phone, prescribing_doctor, reason, start_date, notes) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                (pid,mn,dose,freq,ph,phph,doc,rsn,start,notes))
+        for pn,pt,sp,prac,addr,ph,fx,net,portal,pcp,lv,na in [
+            ("Dr. Elena Ramirez","Primary care doctor / PCP","Family Medicine","Desert Springs Medical Group","2075 E Flamingo Rd, Las Vegas NV 89119","702-555-0140","702-555-0141","Humana Gold Plus PPO","https://mydesertsprings.com",1,"2026-05-12","2026-11-10"),
+            ("Dr. Kevin Park","Specialist","Cardiology","Nevada Heart Associates","3121 S Maryland Pkwy Ste 400, Las Vegas NV 89109","702-555-0188","702-555-0189","Humana Gold Plus PPO","https://nevadaheart.com",0,"2026-03-20","2026-09-20"),
+            ("Desert Eye Associates","Eye Doctor","Ophthalmology","Desert Eye Associates","8551 W Lake Mead Blvd, Las Vegas NV 89128","702-555-0210","702-555-0211","","",0,"2026-01-15","2027-01-15"),
+            ("Dr. Patricia Hill","Dentist","General Dentistry","Summerlin Dental Care","1980 Village Center Cir, Las Vegas NV 89134","702-555-0230","702-555-0231","","",0,"2026-04-08","2026-10-08")]:
+            db.execute("INSERT INTO providers (beneficiary_profile_id, name, provider_type, specialty, practice_name, address, phone, fax, doctor_network, patient_portal_url, last_visit_date, next_appointment_date, is_pcp) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (pid,pn,pt,sp,prac,addr,ph,fx,net,portal,lv,na,pcp))
+        for an,at,rx,sv,notes in [
+            ("Penicillin","Medication","Hives, facial swelling, difficulty breathing","Severe","Listed on hospital wristband; carry epinephrine"),
+            ("Shellfish","Food","Anaphylaxis — throat swelling, vomiting","Severe","Epinephrine auto-injector prescribed"),
+            ("Sulfa drugs","Medication","Rash, fever, joint pain","Moderate","No sulfonamide antibiotics"),
+            ("Latex","Environmental","Skin irritation, hives","Mild","Alert surgical teams"),
+            ("Ragweed / Pollen","Environmental","Nasal congestion, sneezing","Mild","Seasonal — peaks Aug-Oct")]:
+            db.execute("INSERT INTO allergies (beneficiary_profile_id, allergy_name, allergy_type, reaction, severity, notes) VALUES (?,?,?,?,?,?)",
+                (pid,an,at,rx,sv,notes))
+        db.execute("INSERT INTO insurance_policies (beneficiary_profile_id, policy_type, insurance_company, plan_name, plan_number, member_id_encrypted, rx_bin_encrypted, rx_pcn_encrypted, group_number_encrypted, effective_date, notes) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            (pid,"Medicare Advantage (Part C)","Humana","Gold Plus H5619-003","H5619-003",_enc("H5619-4821-00"),_enc("610014"),_enc("MEDDADV"),_enc("N/A"),"2026-01-01","OOP max $5,000 in-network; $0 copay PCP; $45 specialist"))
+        db.execute("INSERT INTO insurance_policies (beneficiary_profile_id, policy_type, insurance_company, plan_name, plan_number, member_id_encrypted, rx_bin_encrypted, rx_pcn_encrypted, effective_date, notes) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (pid,"Part D Prescription Drug","SilverScript Choice (CVS)","SilverScript Choice","S5601-068",_enc("SS-9234-7701"),_enc("004336"),_enc("ADV"),"2026-01-01","Preferred pharmacy: CVS; Tier 1-2 generics $0-$10"))
+        db.execute("INSERT INTO insurance_policies (beneficiary_profile_id, policy_type, insurance_company, plan_name, member_id_encrypted, effective_date, notes) VALUES (?,?,?,?,?,?,?)",
+            (pid,"Medicare Part A & B (Original Medicare)","CMS / Social Security","Original Medicare",_enc("1EG4-TE5-MK72"),"2010-03-01","Keep red-white-blue card in wallet"))
+        db.execute("INSERT INTO medicare_advisors (beneficiary_profile_id, advisor_name, agency_name, phone, email, npn, insurance_company, plan_name, last_helped_date, notes) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (pid,"Thabang Kesiilwe","Kesiilwe Insurance","702-555-0177","kgosi.kesiilwe@gmail.com","12345678","Humana","Gold Plus H5619","2025-10-15","Annual review every Oct-Nov; call before AEP"))
+        for sname,sdate,fac,doc,notes in [
+            ("Right total knee replacement","2019-03-14","Sunrise Hospital Las Vegas","Dr. Marcus Webb","Full recovery; follow-up annually"),
+            ("Cataract surgery — left eye","2022-08-09","Desert Eye Surgery Center","Dr. Patricia Cole","No complications; vision improved to 20/30"),
+            ("Appendectomy","1978-06-02","St. Rose Dominican Hospital","Unknown","Emergency procedure; full recovery"),
+            ("Hysterectomy (partial)","2001-11-20","Valley Hospital Medical Center","Dr. Sandra Reyes","Benign fibroid; full recovery")]:
+            db.execute("INSERT INTO surgeries (beneficiary_profile_id, surgery_name, approximate_date, facility, doctor, notes) VALUES (?,?,?,?,?,?)",
+                (pid,sname,sdate,fac,doc,notes))
+        for cat,note in [
+            ("Medical","Preferred hospital: Valley Hospital Medical Center (620 Shadow Ln, Las Vegas NV 89106)"),
+            ("Medical","DNR (Do Not Resuscitate) order on file with Dr. Ramirez and Valley Hospital — updated Jan 2026"),
+            ("Medical","Healthcare Power of Attorney: daughter Sarah Johnson (702-555-0155)"),
+            ("Legal","Will and Revocable Living Trust on file with Henderson Law Group — 702-555-0900"),
+            ("Legal","Safe deposit box at Wells Fargo Summerlin branch — key in bedroom dresser top drawer"),
+            ("Home","Spare house key with neighbor Mrs. Rosa Torres at 1236 Desert Sage Drive"),
+            ("Insurance","Medicare supplement gap reviewed Oct 2025 with Thabang; plan adequate through 2026"),
+            ("Financial","Social Security deposited 3rd Wednesday each month to Wells Fargo checking account"),
+            ("Financial","RMDs from Fidelity IRA started 2015; quarterly statements mailed")]:
+            db.execute("INSERT INTO important_notes (beneficiary_profile_id, category, note_text_encrypted, created_by) VALUES (?,?,?,?)",
+                (pid,cat,_enc(note),uid))
+        for cat,inst,phone,web,last4,docloc,trusted,notes in [
+            ("Bank","Wells Fargo — Checking and Savings","1-800-869-3557","www.wellsfargo.com","7821","Home fireproof safe (master bedroom closet)","David Johnson (spouse)","Checking for bills; savings for medical emergencies"),
+            ("Investment / Retirement","Fidelity — IRA","1-800-343-3548","www.fidelity.com","4892","Fireproof safe — Fidelity brokerage statement folder","Sarah Johnson (daughter)","RMDs started 2015; quarterly statements mailed"),
+            ("Life Insurance","New York Life — Whole Life Policy","1-800-695-4331","www.newyorklife.com","","Fireproof safe — insurance folder","Sarah Johnson (daughter)","Policy #NYL-4471882; death benefit $50,000; David Johnson primary beneficiary"),
+            ("Legal","Henderson Law Group — Estate Attorney","702-555-0900","","","Will and trust on file at attorney office","James Whitfield Esq.","Trust amended Jan 2024; successor trustee: Sarah Johnson"),
+            ("Government","Social Security Administration","1-800-772-1213","www.ssa.gov","","Social Security card in fireproof safe","","Medicare Part A and B enrollment via SSA")]:
+            db.execute("INSERT INTO financial_locators (beneficiary_profile_id, category, institution_name, contact_phone, website, last_four_only_encrypted, document_location, trusted_contact, notes_encrypted) VALUES (?,?,?,?,?,?,?,?,?)",
+                (pid,cat,inst,phone,web,_enc(last4) if last4 else "",docloc,trusted,_enc(notes)))
+    except Exception as e:
+        import traceback; traceback.print_exc()
 
 
 app = FastAPI(title="NorthStar Medicare Family File MVP", lifespan=lifespan)
